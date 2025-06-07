@@ -2,25 +2,32 @@ import React, { useEffect, useState } from "react";
 
 function App() {
 	const [books, setBooks] = useState([]);
-	const [filteredBooks, setFilteredBooks] = useState([]);
+	const [searchTerm, setSearchTerm] = useState("");
 	const [filters, setFilters] = useState({
 		country: "All",
 		language: "All",
 		pages: "All",
 		year: "All",
 	});
+	
+	const [itemsPerPage, setItemsPerPage] = useState(20);
+	const [currentPage, setCurrentPage] = useState(1);
 
 	useEffect(() => {
 		fetch("https://raw.githubusercontent.com/benoitvallon/100-best-books/master/books.json")
 		.then((res) => res.json())
 		.then((data) => {
 			setBooks(data.slice(0, 100));
-			setFilteredBooks(data.slice(0, 100));
 		});
 	}, []);
 	
-	useEffect(() => {
+	const getFilteredBooks = () => {
 		let result = books;
+		
+		if (searchTerm)
+			result = result.filter((b) =>
+				b.title.toLowerCase().includes(searchTerm.toLowerCase())
+		);
 
 		if (filters.country !== "All")
 			result = result.filter((b) => b.country === filters.country);
@@ -40,11 +47,20 @@ function App() {
 			if (filters.year === "19th century") result = result.filter((b) => b.year >= 1800 && b.year <= 1899);
 			if (filters.year === "20th century") result = result.filter((b) => b.year >= 1900 && b.year <= 1999);
 		}
-		setFilteredBooks(result);
-	}, [filters, books]);
+		return result;
+	};
+	
+	const filteredBooks = getFilteredBooks();
+
+	const totalPages = Math.ceil(filteredBooks.length / itemsPerPage);
+	const displayedBooks = filteredBooks.slice(
+		(currentPage - 1) * itemsPerPage,
+		currentPage * itemsPerPage
+	);
 	
 	const updateFilter = (type, value) => {
 		setFilters({ ...filters, [type]: value });
+		setCurrentPage(1);
 	};
 	
 	const unique = (key) => ["All", ...Array.from(new Set(books.map((b) => b[key])))];
@@ -81,6 +97,19 @@ function App() {
 		backgroundColor: "#e5d5cb",
 	};
 	
+	const searchBox = {
+		marginBottom: "20px",
+    };
+    
+	const searchInput = {
+		width: "100%",
+		padding: "8px",
+		fontSize: "13px",
+		borderRadius: "4px",
+		border: "1px solid #aaa",
+		boxSizing: "border-box",
+    };
+	
 	const dropdownContainer = {
 		marginBottom: "20px",
 		display: "flex",
@@ -106,6 +135,20 @@ function App() {
 		padding: "40px",
 		boxSizing: "border-box",
 	};
+	
+	const controlRow = {
+		display: "flex",
+		justifyContent: "space-between",
+		alignItems: "center",
+		marginBottom: "20px",
+		gap: "20px",
+	};
+	
+	const controlBar = {
+		display: "flex",
+		alignItems: "center",
+		gap: "10px",
+    };
 	
 	const grid = {
 		display: "grid",
@@ -177,12 +220,40 @@ function App() {
 		color: "#333",
 		boxShadow: "inset 0 0 2px rgba(0, 0, 0, 0.1)",
 	};
+	
+	const pagination = {
+		display: "flex",
+		alignItems: "center",
+		gap: "6px",
+    };
+	
+    const pageButton = {
+		padding: "6px 12px",
+		border: "1px solid #333",
+		borderRadius: "4px",
+		cursor: "pointer",
+		background: "#fff",
+    };
+	
+    const activePage = {
+		fontWeight: "bold",
+		background: "#ccc",
+    };
 
 	return (
 		<div style={page}>
 			<div style={topbar}>List of Books</div>
 			<div style={layout}>
 				<div style={sidebar}>
+				<div style={searchBox}>
+					<input
+						type="text"
+						placeholder="Search title..."
+						value={searchTerm}
+						onInput={(e) => setSearchTerm(e.target.value)}
+						style={searchInput}
+					/>
+				</div>
 					<div style={dropdownContainer}>
 						<div style={label}>Country</div>
 						<select style={select} value={filters.country} onChange={(e) => updateFilter("country", e.target.value)}>
@@ -214,8 +285,40 @@ function App() {
 					</div>
 				</div>
 				<div style={content}>
+					<div style={controlRow}>
+						<div style={pagination}>
+							<span style={label}>Page:</span>
+							{Array.from({ length: totalPages }).map((_, idx) => (
+								<button
+									key={idx}
+									style={{
+										...pageButton,
+										...(currentPage === idx + 1 ? activePage : {}),
+									}}
+									onClick={() => setCurrentPage(idx + 1)}
+								>
+									{idx + 1}
+								</button>
+							))}
+						</div>
+						<div style={controlBar}>
+							<span style={label}>Items per page:</span>
+							<select
+								style={select}
+								value={itemsPerPage}
+								onChange={(e) => {
+									setItemsPerPage(Number(e.target.value));
+									setCurrentPage(1);
+								}}
+							>
+							{[20, 50, 100].map((n, i) => (
+							<option key={i} value={n}>{n}</option>
+							))}
+							</select>
+						</div>
+					</div>
 					<div style={grid}>
-						{filteredBooks.map((book, index) => (
+						{displayedBooks.map((book, index) => (
 							<div key={index} style={card}>
 								<div style={titleStyle}>{book.title}</div>
 								<div style={contentRow}>
