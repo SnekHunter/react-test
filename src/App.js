@@ -1,20 +1,60 @@
 import React, { useEffect, useState } from "react";
-import './App.css';
 
 function App() {
 	const [books, setBooks] = useState([]);
+	const [filteredBooks, setFilteredBooks] = useState([]);
+	const [filters, setFilters] = useState({
+		country: "All",
+		language: "All",
+		pages: "All",
+		year: "All",
+	});
 
 	useEffect(() => {
 		fetch("https://raw.githubusercontent.com/benoitvallon/100-best-books/master/books.json")
 		.then((res) => res.json())
-		.then((data) => setBooks(data.slice(0, 100)));
+		.then((data) => {
+			setBooks(data.slice(0, 100));
+			setFilteredBooks(data.slice(0, 100));
+		});
 	}, []);
 	
+	useEffect(() => {
+		let result = books;
+
+		if (filters.country !== "All")
+			result = result.filter((b) => b.country === filters.country);
+
+		if (filters.language !== "All")
+			result = result.filter((b) => b.language === filters.language);
+
+		if (filters.pages !== "All") {
+			const [min, max] = filters.pages.split("-").map(Number);
+			result = result.filter((b) => b.pages >= min && b.pages <= max);
+		}
+
+		if (filters.year !== "All") {
+			if (filters.year === "16th century") result = result.filter((b) => b.year >= 1500 && b.year <= 1599);
+			if (filters.year === "17th century") result = result.filter((b) => b.year >= 1600 && b.year <= 1699);
+			if (filters.year === "18th century") result = result.filter((b) => b.year >= 1700 && b.year <= 1799);
+			if (filters.year === "19th century") result = result.filter((b) => b.year >= 1800 && b.year <= 1899);
+			if (filters.year === "20th century") result = result.filter((b) => b.year >= 1900 && b.year <= 1999);
+		}
+		setFilteredBooks(result);
+	}, [filters, books]);
+	
+	const updateFilter = (type, value) => {
+		setFilters({ ...filters, [type]: value });
+	};
+	
+	const unique = (key) => ["All", ...Array.from(new Set(books.map((b) => b[key])))];
+	
 	const page = {
-		fontFamily: "'Merriweather'",
+		fontFamily: "sans-serif",
 		margin: 0,
 		display: "flex",
 		flexDirection: "column",
+		backgroundColor: "#ffede2",
 	};
 
 	const topbar = {
@@ -25,6 +65,7 @@ function App() {
 		fontWeight: "bold",
 		textAlign: "center",
 		boxSizing: "border-box",
+		backgroundColor: "#a9b8a4",
 	};
 	
 	const layout = {
@@ -37,7 +78,27 @@ function App() {
 		padding: "30px 20px",
 		borderRight: "2px solid #aaa",
 		boxSizing: "border-box",
-		backgroundColor: "#f4f4f4",
+		backgroundColor: "#e5d5cb",
+	};
+	
+	const dropdownContainer = {
+		marginBottom: "20px",
+		display: "flex",
+		flexDirection: "column",
+	};
+	
+	const label = {
+		fontWeight: "bold",
+		marginBottom: "6px",
+		fontSize: "13px",
+	};
+	
+	const select = {
+		padding: "6px",
+		fontSize: "13px",
+		borderRadius: "4px",
+		border: "1px solid #aaa",
+		marginBottom: "10px",
 	};
 
 	const content = {
@@ -53,7 +114,7 @@ function App() {
 	};
 	
 	const card = {
-		background: "#ddd",
+		background: "#a9b8a4",
 		padding: "15px",
 		borderRadius: "6px",
 		border: "1px solid #aaa",
@@ -70,6 +131,7 @@ function App() {
 		flex: 1,
 		gap: "15px",
 		marginTop: "10px",
+		overflow: "hidden",
 	};
 	
 	const imageWrapper = {
@@ -121,27 +183,47 @@ function App() {
 			<div style={topbar}>List of Books</div>
 			<div style={layout}>
 				<div style={sidebar}>
-					<div style={{ fontWeight: "bold", marginBottom: "20px", fontSize: "24px" }}>
-						Filters
+					<div style={dropdownContainer}>
+						<div style={label}>Country</div>
+						<select style={select} value={filters.country} onChange={(e) => updateFilter("country", e.target.value)}>
+							{unique("country").map((c, i) => (
+								<option key={i} value={c}>{c}</option>
+							))}
+						</select>
+
+						<div style={label}>Language</div>
+						<select style={select} value={filters.language} onChange={(e) => updateFilter("language", e.target.value)}>
+							{unique("language").map((l, i) => (
+								<option key={i} value={l}>{l}</option>
+							))}
+						</select>
+
+						<div style={label}>Pages</div>
+						<select style={select} value={filters.pages} onChange={(e) => updateFilter("pages", e.target.value)}>
+							{["All", "1-100", "101-200", "201-300", "301-400", "401-500", "501-1000"].map((p, i) => (
+								<option key={i} value={p}>{p}</option>
+							))}
+						</select>
+
+						<div style={label}>Year</div>
+						<select style={select} value={filters.year} onChange={(e) => updateFilter("year", e.target.value)}>
+							{["All", "16th century", "17th century", "18th century", "19th century", "20th century"].map((y, i) => (
+								<option key={i} value={y}>{y}</option>
+							))}
+						</select>
 					</div>
-					<ul style={{ listStyle: "none", padding: 0, fontSize: "18px" }}>
-						<li>By Country</li>
-						<li>By Language</li>
-						<li>By Year</li>
-						<li>By Pages</li>
-					</ul>
 				</div>
 				<div style={content}>
 					<div style={grid}>
-						{books.map((book, index) => (
+						{filteredBooks.map((book, index) => (
 							<div key={index} style={card}>
 								<div style={titleStyle}>{book.title}</div>
 								<div style={contentRow}>
 									<div style={imageWrapper}>
 										<img
-										  src={`https://raw.githubusercontent.com/benoitvallon/100-best-books/master/static/${book.imageLink}`}
-										  alt={book.title}
-										  style={imageStyle}
+											src={`https://raw.githubusercontent.com/benoitvallon/100-best-books/master/static/${book.imageLink}`}
+											alt={book.title}
+											style={imageStyle}
 										/>
 									</div>
 									<div style={info}>
